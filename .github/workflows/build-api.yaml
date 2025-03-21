@@ -1,4 +1,4 @@
-name: Build & Deploy API to Development
+name: API Image - Build & Tag Dev
 
 on:
   workflow_dispatch:
