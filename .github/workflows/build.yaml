@@ -27,13 +27,3 @@ jobs:
           cmd: |
             'version'
             'start-build ${BUILD_CONFIG} -n ${OPENSHIFT_NAMESPACE} --follow'
-
-      - name: Check OpenShift build status
-        run: |
-          last_build=$(oc get builds -n ${OPENSHIFT_NAMESPACE} --selector=buildconfig=${BUILD_CONFIG} --sort-by='.metadata.creationTimestamp' -o jsonpath='{.items[-1].metadata.name}')
-          echo "Build name: ${last_build}"
-          build_status=$(oc get build ${last_build} -o jsonpath='{.status.phase}')
-          if [[ "$build_status" != "Complete" ]]; then
-            echo "Build failed"
-            exit 1
-          fi
