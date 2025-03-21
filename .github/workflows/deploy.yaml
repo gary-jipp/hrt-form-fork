@@ -1,0 +1,92 @@
+name: Deploy to Test & Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      application:
+        type: choice
+        description: Select Application to Deploy
+        options:
+        - -Select-
+        - Teleplan Web App
+        - API Monitor
+        - Log Reaper
+        - Log Rotate
+        - Pod Cleaner
+        - Pod Refresh
+        required: true
+
+      image_tag:
+        type: choice
+        description: Select Target Environment
+        options:
+        - -Select-
+        - Test Environment
+        - Production Environment
+        required: true
+
+jobs:
+
+  deploy-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Process selected image
+        id: set-env
+        run: |
+          echo application = "${{ github.event.inputs.application }}"
+          case "${{ github.event.inputs.application }}" in
+            "Teleplan Web App")
+              echo "BUILD_NAME=teleplan-web" >> $GITHUB_ENV
+              ;;
+            "API Monitor")
+              echo "BUILD_NAME=apimonitor" >> $GITHUB_ENV
+              ;;
+            "Log Reaper")
+              echo "BUILD_NAME=logreaper" >> $GITHUB_ENV
+              ;;
+            "Log Rotate")
+              echo "BUILD_NAME=logrotate" >> $GITHUB_ENV
+              ;;
+            "Pod Cleaner")
+              echo "BUILD_NAME=podcleaner" >> $GITHUB_ENV
+              ;;
+            "Pod Refresh")
+              echo "BUILD_NAME=podrefresh" >> $GITHUB_ENV
+              ;;
+            *)
+             echo "Unknown application: ${{ github.event.inputs.application }}" >&2
+              exit 1
+              ;;
+          esac
+          echo ${BUILD_NAME}
+
+          echo Environment = "${{ github.event.inputs.image_tag }}"
+          case "${{ github.event.inputs.image_tag }}" in
+            "Test Environment")
+              echo "SRC_TAG=dev" >> $GITHUB_ENV
+              echo "IMAGE_TAG=test" >> $GITHUB_ENV
+              ;;
+            "Production Environment")
+              echo "SRC_TAG=test" >> $GITHUB_ENV
+              echo "IMAGE_TAG=prod" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Unknown Environment: ${{ github.event.inputs.image_tag }}" >&2
+              exit 1
+              ;;
+          esac
+
+          echo ${SRC_TAG} -- ${IMAGE_TAG}
+
+      - name: Tag image for deployment
+        env:
+          NAMESPACE: ${{ secrets.OpenShiftNamespace }}
+        uses: redhat-developer/openshift-actions@v1.1
+        with:
+          version: "latest"
+          openshift_server_url: ${{ secrets.OpenShiftServerURL}}
+          parameters: '{"apitoken": "${{ secrets.OpenShiftToken }}", "acceptUntrustedCerts": "true"}'
+          cmd: |
+            'version'
+            'tag -n ${NAMESPACE} ${BUILD_NAME}:${SRC_TAG} ${BUILD_NAME}:${IMAGE_TAG}'
